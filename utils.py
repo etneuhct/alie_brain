@@ -38,6 +38,19 @@ def speak(sentence, device_name='living'):
     client = paramiko.client.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     client.connect(device['host'], username=device['username'], password=device['password'])
-    _stdin, stdout, _stdrr = client.exec_command(f'''{device['exe']} -l fr "{sentence}" | mpg123 -''')
+    code = get_audio_python_code(sentence)
+    _stdin, stdout, _stdrr = client.exec_command(f'python -c """{code}"""')
     stdout.read()
     client.close()
+
+
+def get_audio_python_code(text):
+    value = f"""
+from gtts import gTTS
+import os
+tts = gTTS('{text}', lang='fr')
+tts.save('/tmp/temp.mp3')
+os.system('mpg123 /tmp/temp.mp3')
+os.system('rm /tmp/temp.mp3')
+"""
+    return value
