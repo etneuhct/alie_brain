@@ -48,7 +48,7 @@ def get_audio_python_code(text):
     value = f"""
 from gtts import gTTS
 import os
-tts = gTTS('{text}', lang='fr')
+tts = gTTS('''{text}''', lang='fr')
 tts.save('/tmp/temp.mp3')
 os.system('mpg123 /tmp/temp.mp3')
 os.system('rm /tmp/temp.mp3')
