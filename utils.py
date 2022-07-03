@@ -40,7 +40,7 @@ def speak(sentence, device_name='living'):
     client.connect(device['host'], username=device['username'], password=device['password'])
     code = get_audio_python_code(sentence)
     _stdin, stdout, _stdrr = client.exec_command(f'python -c """{code}"""')
-    stdout.read()
+    print(stdout.read())
     client.close()
 
 
@@ -51,6 +51,8 @@ import os
 tts = gTTS('''{text}''', lang='fr')
 tts.save('/tmp/temp.mp3')
 os.system('mpg123 /tmp/temp.mp3')
-os.system('rm /tmp/temp.mp3')
 """
     return value
+
+if __name__ == '__main__':
+    speak("hello my name is", 'office')

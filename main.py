@@ -1,10 +1,15 @@
+import io
+
+import requests
+import speech_recognition as sr
 from fastapi import BackgroundTasks, FastAPI
 from pydantic import BaseModel
+from starlette.middleware.cors import CORSMiddleware
 
 from exceptions import CloseConversationException
 from memory import get_repeat, HISTORY, set_repeat, SHORT_TERM_HISTORY
 from settings import ALL_COMMANDS
-from utils import check_sentence, speak
+from utils import check_sentence
 from voice_commands.bot_identity_commands import BotIdentityCommand
 from voice_commands.courtesy_commands import CourtesyCommand
 from voice_commands.interruption_commands import CancelConversationCommands
@@ -34,12 +39,21 @@ VOICE_COMMANDS = [
 ALL_COMMANDS += init_command()
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=['*'],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 class Message(BaseModel):
     sentence: str
 
+
 class SpokenMessage(BaseModel):
-    sentence: str
+    file_url: str
     room: str
 
 
@@ -51,8 +65,14 @@ async def on_message(message: Message, background_tasks: BackgroundTasks):
 
 
 @app.post("/speak")
-async def on_speak(spoken_message: SpokenMessage):
-    speak(spoken_message.sentence, spoken_message.room)
+async def on_speak(spoken_message: SpokenMessage, background_tasks: BackgroundTasks):
+    audio_file = download_file(spoken_message.file_url)
+    r = sr.Recognizer()
+    audio_file = sr.AudioFile(audio_file)
+    with audio_file as source:
+        audio = r.record(source)
+    sentence = r.recognize_google(audio, language='fr-FR')
+    background_tasks.add_task(handle_sentence, sentence)
     return
 
 
@@ -64,6 +84,7 @@ async def handle_sentence(sentence):
         SHORT_TERM_HISTORY.clear()
         return
 
+
 def sentence_analyse(sentence):
     if sentence:
         if get_repeat():
@@ -73,3 +94,11 @@ def sentence_analyse(sentence):
         else:
             check_sentence(sentence, ALL_COMMANDS)
     return
+
+
+def download_file(url):
+    data = {
+        "allow_redirects": False
+    }
+    req = requests.get(url, **data)
+    return io.BytesIO(req.content)
